@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}DOI deposit tool{% endblock %} · WAC Clearinghouse</title>
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#F5EFE1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171512" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="{{ url_for('static', filename='fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='tokens.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar">
   <div class="wrap bar-in">
-    <a class="brand" href="{{ url_for('index') }}">WAC Clearinghouse <span>DOI deposit tool</span></a>
+    <a class="brand" href="{{ url_for('index') }}"><span class="name">WAC Clearinghouse</span><span class="sub">DOI deposit tool</span></a>
     <nav aria-label="Main">
       <a href="{{ url_for('metadata') }}"{% if page == 'metadata' %} aria-current="page"{% endif %}>1 · Mint DOIs</a>
       <a href="{{ url_for('references') }}"{% if page == 'references' %} aria-current="page"{% endif %}>2 · Add references</a>
@@ -19,8 +23,12 @@
     </nav>
   </div>
 </header>
-<main id="main" class="wrap">
+<main id="main" class="wrap" tabindex="-1">
 {% block content %}{% endblock %}
+<svg class="coronis" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M5 15c4 0 5-8 9-8s5 4 5 4"/><path d="M9 19h9"/>
+</svg>
 </main>
 <footer class="wrap foot">
   <p>Generates files; deposits nothing. Upload them yourself at the Crossref admin site.</p>

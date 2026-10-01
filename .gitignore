@@ -5,3 +5,4 @@ __pycache__/
 venv/
 # fetched by tools/fetch_schemas.py at install time
 schemas/*.xsd
+.fly-demo-passphrase.txt

@@ -68,7 +68,8 @@ _fails: dict[str, deque] = defaultdict(deque)
 @app.after_request
 def headers(resp):
     resp.headers["Content-Security-Policy"] = (
-        "default-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'")
+        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
+        "frame-ancestors 'none'")
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["Referrer-Policy"] = "same-origin"
     return resp

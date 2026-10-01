@@ -1,4 +1,5 @@
-# Fly.io config for a first, throwaway deployment while the Windows install is arranged.
+# Fly.io config for the demo deployment while the Windows install is arranged.
+# The passphrase is a Fly secret, never in this file:  fly secrets set WACDOI_ACCESS_CODE=...
 #
 #   fly launch --no-deploy --copy-config
 #   fly deploy
@@ -14,6 +15,7 @@ primary_region = "sjc"
   CROSSREF_MAILTO = "jlewis2@olympic.edu"
   WACDOI_PREFIX = "10.37514"
   WACDOI_REGISTRANT = "WAC Clearinghouse"
+  WACDOI_SECURE_COOKIES = "1"
 
 [http_service]
   internal_port = 8080

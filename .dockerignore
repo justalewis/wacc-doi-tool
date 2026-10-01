@@ -1,0 +1,8 @@
+.git
+.gitignore
+__pycache__
+.pytest_cache
+tests
+deploy
+schemas/*.xsd
+.fly-demo-passphrase.txt
