@@ -1,0 +1,14 @@
+# Runtime dependencies. The Dockerfile installs only this file, so anything
+# test-only belongs in requirements-dev.txt instead.
+
+flask>=3.0.0
+
+# xmlbuild.py validates deposit XML against the Crossref XSDs before anything
+# is handed out. The stdlib ElementTree cannot do schema validation; lxml can.
+lxml>=5.0.0
+
+# Not imported by any module — it is the server the Dockerfile's CMD runs
+# (`waitress-serve`), picked so the container runs the same WSGI server as the
+# Windows host. Dropping it because nothing imports it breaks the container at
+# start rather than at build, which is a much worse place to find out.
+waitress>=3.0
