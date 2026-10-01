@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% set page = 'references' %}
+{% block title %}Step 2: your deposit file{% endblock %}
+{% block content %}
+<h1>Step 2: deposit file ready</h1>
+
+{% if problems %}
+<div class="note bad" role="alert">
+  <strong>This file does not pass Crossref's schema, so it is not offered for download.</strong>
+  <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+</div>
+{% else %}
+<p class="note good"><strong>Valid.</strong> {{ items|length }} references for <code>{{ v.doi }}</code> pass Crossref's
+resources schema (4.3.6).{% if record and record.title %} Article: {{ record.title }}.{% endif %}</p>
+
+<form method="post" action="{{ url_for('references_download') }}" class="actions">
+  <input type="hidden" name="xml" value="{{ xml }}">
+  <input type="hidden" name="filename" value="{{ filename }}">
+  <button class="btn">Download {{ filename }}</button>
+</form>
+
+<h2>Next</h2>
+<ol>
+  <li>Upload the file in the Crossref admin system as a <strong>resources / citations</strong> deposit. It is not a metadata deposit.</li>
+  <li>Wait for the confirmation email to {{ v.dep_email }} and check that it reports success.</li>
+  <li>This replaced any references the DOI carried before. If you add to the list later, deposit the whole list again.</li>
+</ol>
+{% endif %}
+
+<details><summary>View the XML</summary><pre>{{ xml }}</pre></details>
+{% endblock %}

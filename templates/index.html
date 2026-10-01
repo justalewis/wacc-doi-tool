@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}DOI deposit tool{% endblock %}
+{% block content %}
+<h1>Register DOIs, then attach references</h1>
+<p class="lede">Two steps, always in this order. Each produces an XML file for you to upload at the
+Crossref admin site. Nothing is stored here and nothing is sent to Crossref.</p>
+
+{% if not schemas_ok %}
+<p class="note bad"><strong>Setup incomplete.</strong> Crossref's schema files are not installed on this
+server, so no file can be validated or downloaded. Run <code>python tools/fetch_schemas.py</code>.</p>
+{% endif %}
+
+<div class="steps">
+  <section class="card">
+    <h2><span class="n">1</span> Mint DOIs</h2>
+    <p>Enter the journal, issue and article details. Choose a whole issue or a single article.
+    You get a metadata deposit that registers the DOIs under <code>{{ prefix }}</code>.</p>
+    <p class="actions"><a class="btn" href="{{ url_for('metadata', mode='issue') }}">Whole issue</a>
+    <a class="btn ghost" href="{{ url_for('metadata', mode='article') }}">Single article</a></p>
+  </section>
+  <section class="card">
+    <h2><span class="n">2</span> Add references</h2>
+    <p>Only after step one has been uploaded and processed. Paste the article's Works Cited or
+    References list, give the article's DOI, and get a reference deposit for that DOI.
+    The tool checks with Crossref that the DOI exists before it will build the file.</p>
+    <p class="actions"><a class="btn" href="{{ url_for('references') }}">Add references</a></p>
+  </section>
+</div>
+
+<h2>Things worth knowing</h2>
+<ul class="plain">
+  <li><strong>Reference style doesn't matter.</strong> APA, MLA or Chicago all go in as plain text, and
+  Crossref does the matching to DOIs on its side.</li>
+  <li><strong>A reference deposit replaces the DOI's existing list.</strong> Always paste the complete list.</li>
+  <li><strong>Journals only.</strong> Book chapters need a different deposit type that this tool doesn't build yet.</li>
+  <li><strong>Upload to the test system first</strong> if you are unsure of a file. A production deposit under a shared prefix is hard to retract.</li>
+</ul>
+{% endblock %}

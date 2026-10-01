@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% set page = 'references' %}
+{% block title %}Step 2: review the entries{% endblock %}
+{% block content %}
+<h1>Step 2: review the entries</h1>
+
+<div class="note {{ 'good' if record and record.status == 'found' else 'warn' }}">
+  {% if record and record.status == 'found' %}
+    <strong>Crossref has this DOI.</strong> Make sure it is the right article:
+    <p class="record"><code>{{ record.doi }}</code><br>
+    {{ record.title }}{% if record.authors %}<br>{{ record.authors|join('; ') }}{% endif %}
+    {% if record.container %}<br><em>{{ record.container }}</em>{% if record.year %}, {{ record.year }}{% endif %}{% endif %}</p>
+  {% else %}
+    <strong>Not confirmed with Crossref.</strong> You chose to continue without a live check of
+    <code>{{ v.doi }}</code>.
+  {% endif %}
+</div>
+
+{% if record and record.status == 'found' and record.ref_count %}
+<div class="note warn">This record already lists <strong>{{ record.ref_count }}</strong> references. A reference deposit
+<strong>replaces</strong> the existing list, so the entries below must be the complete list, not an addition to it.</div>
+{% endif %}
+
+<p><strong>{{ entries|length }}</strong> entries found. Edit any that were split or joined wrongly; empty an entry to remove it.</p>
+
+<form method="post" action="{{ url_for('references_build') }}">
+  <input type="hidden" name="dep_name" value="{{ v.dep_name }}">
+  <input type="hidden" name="dep_email" value="{{ v.dep_email }}">
+  <input type="hidden" name="doi" value="{{ v.doi }}">
+  <input type="hidden" name="override" value="{{ '1' if (v.override or (record and record.status != 'found')) else '' }}">
+
+  <ol class="refs">
+  {% for e in entries %}
+    <li>
+      <textarea name="ref" rows="{{ [2, (e.text|length // 90) + 1]|max }}" aria-label="Reference {{ loop.index }}">{{ e.text }}</textarea>
+      {% for w in e.warnings %}<p class="inline warn">{{ w }}</p>{% endfor %}
+      {% if e.doi %}<p class="inline hint">DOI detected: <code>{{ e.doi }}</code>, which Crossref will use directly.</p>{% endif %}
+    </li>
+  {% endfor %}
+  </ol>
+
+  <p class="actions"><button class="btn">Generate the reference deposit</button>
+  <a class="btn ghost" href="{{ url_for('references') }}">Start over</a></p>
+</form>
+{% endblock %}

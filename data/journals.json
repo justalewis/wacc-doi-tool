@@ -1,0 +1,12 @@
+[
+  {"slug": "wac",  "title": "The WAC Journal", "abbrev": "", "issn_print": "", "issn_online": "1544-4929"},
+  {"slug": "jbw",  "title": "Journal of Basic Writing", "abbrev": "", "issn_print": "", "issn_online": "0147-1635"},
+  {"slug": "atd",  "title": "Across the Disciplines", "abbrev": "", "issn_print": "", "issn_online": "1554-8244"},
+  {"slug": "opw",  "title": "Open Words: Access and English Studies", "abbrev": "", "issn_print": "", "issn_online": "2690-392X"},
+  {"slug": "pei",  "title": "Peitho: Journal of the Coalition of Feminist Scholars in the History of Rhetoric", "abbrev": "", "issn_print": "", "issn_online": "2169-0774"},
+  {"slug": "lld",  "title": "Language and Learning Across the Disciplines", "abbrev": "", "issn_print": "", "issn_online": "1091-7098"},
+  {"slug": "dbh",  "title": "Double Helix: A Journal of Critical Thinking and Writing", "abbrev": "", "issn_print": "", "issn_online": "2372-7497"},
+  {"slug": "jwa",  "title": "The Journal of Writing Analytics", "abbrev": "", "issn_print": "", "issn_online": "2474-7491"},
+  {"slug": "awr",  "title": "Academic.Writing: Interdisciplinary Perspectives on Communication Across the Curriculum", "abbrev": "", "issn_print": "", "issn_online": "1552-325X"},
+  {"slug": "rnt",  "title": "RhetNet: A Dialogic Publishing (Ad)Venture", "abbrev": "", "issn_print": "", "issn_online": "2768-251X"}
+]

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set page = 'metadata' %}
+{% block title %}Step 1: your deposit file{% endblock %}
+{% block content %}
+<h1>Step 1: deposit file ready</h1>
+
+{% if problems %}
+<div class="note bad" role="alert">
+  <strong>This file does not pass Crossref's schema, so it is not offered for download.</strong>
+  <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+  <p>Go back and correct the form.</p>
+</div>
+{% else %}
+<p class="note good"><strong>Valid.</strong> The file passes Crossref's own schema (5.4.0).</p>
+{% endif %}
+
+{% include "_messages.html" %}
+
+<h2>What will be registered</h2>
+<p><strong>{{ journal.title }}</strong>
+{% if journal.issn_online or journal.issn_print %} · ISSN {{ journal.issn_online or journal.issn_print }}{% endif %}
+· {% if issue.volume %}vol. {{ issue.volume }}{% endif %}{% if issue.issue %}, no. {{ issue.issue }}{% endif %} ({{ issue.year }})</p>
+<table>
+  <thead><tr><th>DOI</th><th>Title</th><th>Authors</th><th>Pages</th></tr></thead>
+  <tbody>
+  {% for a in articles %}
+    <tr>
+      <td><code>{{ a.doi }}</code></td>
+      <td>{{ a.title }}{% if a.subtitle %}: {{ a.subtitle }}{% endif %}<br><span class="hint">{{ a.url }}</span></td>
+      <td>{% for au in a.authors %}{{ au.given }} {{ au.surname }}{% if not loop.last %}; {% endif %}{% else %}<span class="hint">none</span>{% endfor %}</td>
+      <td>{{ a.first_page }}{% if a.last_page %}–{{ a.last_page }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if not problems %}
+<form method="post" action="{{ url_for('metadata_download') }}" class="actions">
+  <input type="hidden" name="xml" value="{{ xml }}">
+  <input type="hidden" name="filename" value="{{ filename }}">
+  <button class="btn">Download {{ filename }}</button>
+</form>
+<h2>Next</h2>
+<ol>
+  <li>Upload the file in the Crossref admin system as a metadata deposit.</li>
+  <li>Wait for the confirmation email to the depositor address. Check that it reports success.</li>
+  <li>Then use <a href="{{ url_for('references') }}">step 2</a> to add each article's references.</li>
+</ol>
+{% endif %}
+
+<details><summary>View the XML</summary><pre>{{ xml }}</pre></details>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% set page = 'metadata' %}
+{% block title %}Step 1: mint DOIs{% endblock %}
+{% block content %}
+{% set article_mode = v.get('mode') == 'article' %}
+<h1>Step 1: mint DOIs</h1>
+<p class="lede">{% if article_mode %}One article.{% else %}A whole issue.{% endif %}
+<a href="{{ url_for('metadata', mode='issue' if article_mode else 'article') }}">Switch to
+{{ 'a whole issue' if article_mode else 'a single article' }}</a>. You will get a metadata deposit
+to upload at Crossref.</p>
+
+{% include "_messages.html" %}
+
+<form method="post" action="{{ url_for('metadata') }}" autocomplete="off">
+  <input type="hidden" name="mode" value="{{ 'article' if article_mode else 'issue' }}">
+
+  <fieldset>
+    <legend>Who is depositing</legend>
+    <p class="hint">Crossref emails the success or error report to this address.</p>
+    <div class="grid3">
+      <label>Depositor name<input name="dep_name" value="{{ v.get('dep_name','') }}" data-remember="dep_name" required></label>
+      <label>Depositor email<input type="email" name="dep_email" value="{{ v.get('dep_email','') }}" data-remember="dep_email" required></label>
+      <label>Registrant (publisher)<input name="registrant" value="{{ v.get('registrant', default_registrant) }}" required></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Journal</legend>
+    <label>Journal
+      <select name="journal">
+        <option value="">Not listed: enter below</option>
+        {% for j in journals %}
+        <option value="{{ j.slug }}" {{ 'selected' if v.get('journal') == j.slug }}>{{ j.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <details {{ 'open' if v.get('j_title') or v.get('j_slug') }}>
+      <summary>Journal not in the list, or the list is wrong</summary>
+      <div class="grid2">
+        <label>Full title<input name="j_title" value="{{ v.get('j_title','') }}"></label>
+        <label>Abbreviated title (optional)<input name="j_abbrev" value="{{ v.get('j_abbrev','') }}"></label>
+        <label>Print ISSN<input name="j_issn_print" value="{{ v.get('j_issn_print','') }}" placeholder="1234-5678"></label>
+        <label>Online ISSN<input name="j_issn_online" value="{{ v.get('j_issn_online','') }}" placeholder="1234-5678"></label>
+      </div>
+    </details>
+    <label class="narrow">Journal code used in DOIs
+      <input name="j_slug" value="{{ v.get('j_slug','') }}" placeholder="filled from the list above">
+      <span class="hint">The part before <code>-j.</code>, as in {{ prefix }}/<b>wac</b>-j.1997.8.01.14. Leave blank to use the listed journal's code.</span>
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{ 'Volume, issue and date' if article_mode else 'Issue' }}</legend>
+    <div class="grid4">
+      <label>Volume<input name="volume" value="{{ v.get('volume','') }}"></label>
+      <label>Issue<input name="issue" value="{{ v.get('issue','') }}"></label>
+      <label>Year<input name="year" value="{{ v.get('year','') }}" inputmode="numeric" maxlength="4" required></label>
+      <label>Month<input name="month" value="{{ v.get('month','') }}" inputmode="numeric" maxlength="2"></label>
+    </div>
+    <p class="hint">Enter the issue exactly as the journal's earlier DOIs do (<code>1</code> or <code>01</code>); the generated DOIs copy it.
+    The date applies to {{ 'the article' if article_mode else 'every article in the issue' }}. Day is optional:
+    <input class="tiny" name="day" value="{{ v.get('day','') }}" inputmode="numeric" maxlength="2" aria-label="Day">.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{ 'Article' if article_mode else 'Articles' }}</legend>
+    <label class="narrow">{{ 'Article number in the issue' if article_mode else 'Number of the first article' }}
+      <input name="start_no" value="{{ v.get('start_no','1') }}" inputmode="numeric">
+      <span class="hint">Used only to generate DOIs you leave blank.</span>
+    </label>
+
+    {% for r in rows %}
+    <div class="article">
+      <h3>{{ 'Article' if article_mode else 'Article ' ~ loop.index }}</h3>
+      <div class="grid2">
+        <label>Title<input name="a_title" value="{{ r.title }}"></label>
+        <label>Subtitle (optional)<input name="a_subtitle" value="{{ r.subtitle }}"></label>
+      </div>
+      <label>Authors, one per line: <code>Surname, Given name</code> and optionally <code>| ORCID</code>
+        <textarea name="a_authors" rows="3" placeholder="Okafor, Chidi | 0000-0002-1825-0097&#10;Smith, Jane">{{ r.authors }}</textarea>
+      </label>
+      <div class="grid4">
+        <label>First page<input name="a_first" value="{{ r.first }}"></label>
+        <label>Last page<input name="a_last" value="{{ r.last }}"></label>
+        <label class="span2">DOI (blank to generate)<input name="a_doi" value="{{ r.doi }}" placeholder="{{ prefix }}/…"></label>
+      </div>
+      <label>URL where the article lives<input name="a_url" value="{{ r.url }}" placeholder="https://"></label>
+    </div>
+    {% endfor %}
+
+    {% if not article_mode %}
+    <p><button class="btn ghost" name="action" value="add_row">Add another article</button></p>
+    {% endif %}
+  </fieldset>
+
+  <p class="actions"><button class="btn" name="action" value="build">Check and generate the deposit file</button></p>
+</form>
+{% endblock %}

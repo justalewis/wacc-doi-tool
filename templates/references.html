@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% set page = 'references' %}
+{% block title %}Step 2: add references{% endblock %}
+{% block content %}
+<h1>Step 2: add references</h1>
+<p class="lede">Do this <strong>after</strong> the article's DOI has been registered through step one and Crossref has
+processed the upload. The tool checks with Crossref that the DOI exists before it builds anything.</p>
+
+{% include "_messages.html" %}
+
+<form method="post" action="{{ url_for('references') }}" autocomplete="off">
+  <fieldset>
+    <legend>Who is depositing</legend>
+    <div class="grid2">
+      <label>Depositor name<input name="dep_name" value="{{ v.get('dep_name','') }}" data-remember="dep_name" required></label>
+      <label>Depositor email<input type="email" name="dep_email" value="{{ v.get('dep_email','') }}" data-remember="dep_email" required>
+        <span class="hint">Crossref emails the result here.</span></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The article</legend>
+    <label class="narrow">Article DOI
+      <input name="doi" value="{{ v.get('doi','') }}" placeholder="{{ prefix }}/wac-j.2026.37.1.01" required>
+    </label>
+    {% if show_override %}
+    <label class="check"><input type="checkbox" name="override" value="1" {{ 'checked' if v.get('override') }}>
+      I have confirmed in Crossref that this DOI is registered; continue anyway.</label>
+    {% endif %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Works Cited or References</legend>
+    <label>Paste the list from a Word or text file. Just the list, with no article text, no PDF.
+      <textarea name="text" rows="16" spellcheck="false">{{ text }}</textarea>
+    </label>
+    <p class="hint">Any style works, and you don't need to say which. A blank line between entries is the most reliable
+    separator, but one entry per line is fine too. You will see the entries split apart and can fix them before the file is built.</p>
+  </fieldset>
+
+  <p class="actions"><button class="btn">Check the DOI and split the list</button></p>
+</form>
+{% endblock %}

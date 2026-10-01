@@ -1,0 +1,12 @@
+{% if errors %}
+<div class="note bad" role="alert">
+  <strong>Fix {{ 'this' if errors|length == 1 else 'these' }} before continuing:</strong>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% if warnings %}
+<div class="note warn">
+  <strong>Check:</strong>
+  <ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+</div>
+{% endif %}

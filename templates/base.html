@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}DOI deposit tool{% endblock %} · WAC Clearinghouse</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="{{ url_for('index') }}">WAC Clearinghouse <span>DOI deposit tool</span></a>
+    <nav aria-label="Main">
+      <a href="{{ url_for('metadata') }}"{% if page == 'metadata' %} aria-current="page"{% endif %}>1 · Mint DOIs</a>
+      <a href="{{ url_for('references') }}"{% if page == 'references' %} aria-current="page"{% endif %}>2 · Add references</a>
+      {% if gated and session.get('ok') %}<form method="post" action="{{ url_for('logout') }}" class="inline-form"><button class="linklike">Sign out</button></form>{% endif %}
+    </nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+{% block content %}{% endblock %}
+</main>
+<footer class="wrap foot">
+  <p>Generates files; deposits nothing. Upload them yourself at the Crossref admin site.</p>
+</footer>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

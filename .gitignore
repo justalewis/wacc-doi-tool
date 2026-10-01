@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+# fetched by tools/fetch_schemas.py at install time
+schemas/*.xsd
