@@ -17,7 +17,7 @@
   <div class="wrap bar-in">
     <a class="brand" href="{{ url_for('index') }}"><span class="name">WAC Clearinghouse</span><span class="sub">DOI deposit tool</span></a>
     <nav aria-label="Main">
-      <a href="{{ url_for('metadata') }}"{% if page == 'metadata' %} aria-current="page"{% endif %}>1 · Mint DOIs</a>
+      <a href="{{ url_for('mint') }}"{% if page == 'metadata' %} aria-current="page"{% endif %}>1 · Mint DOIs</a>
       <a href="{{ url_for('references') }}"{% if page == 'references' %} aria-current="page"{% endif %}>2 · Add references</a>
       {% if gated and session.get('ok') %}<form method="post" action="{{ url_for('logout') }}" class="inline-form"><button class="linklike">Sign out</button></form>{% endif %}
     </nav>

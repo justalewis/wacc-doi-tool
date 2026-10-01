@@ -6,7 +6,7 @@
 
 <div class="note {{ 'good' if record and record.status == 'found' else 'warn' }}">
   {% if record and record.status == 'found' %}
-    <strong>Crossref has this DOI.</strong> Make sure it is the right article:
+    <strong>Crossref has this DOI.</strong> Make sure it is the right work:
     <p class="record"><code>{{ record.doi }}</code><br>
     {{ record.title }}{% if record.authors %}<br>{{ record.authors|join('; ') }}{% endif %}
     {% if record.container %}<br><em>{{ record.container }}</em>{% if record.year %}, {{ record.year }}{% endif %}{% endif %}</p>

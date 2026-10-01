@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% set page = 'metadata' %}
+{% block title %}Step 1: your deposit file{% endblock %}
+{% block content %}
+<h1>Step 1: deposit file ready</h1>
+
+{% if problems %}
+<div class="note bad" role="alert">
+  <strong>This file does not pass Crossref's schema, so it is not offered for download.</strong>
+  <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+  <p>Go back and correct the form.</p>
+</div>
+{% else %}
+<p class="note good"><strong>Valid.</strong> The file passes Crossref's own schema (5.4.0).</p>
+{% endif %}
+
+{% include "_messages.html" %}
+
+<h2>What will be registered</h2>
+<p><strong>{{ label }}:</strong> {{ book.title }}{% if book.subtitle %}: {{ book.subtitle }}{% endif %}
+· {{ book.publisher }} ({{ book.year }})
+{% if book.series %}· series: {{ book.series.title }}{% endif %}</p>
+<table>
+  <thead><tr><th>DOI</th><th>Title</th><th>{{ 'Editors / authors' }}</th><th>Pages</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>{{ book.doi }}</code></td>
+      <td><strong>{{ book.title }}</strong><br><span class="hint">{{ book.url }}</span></td>
+      <td>{% for au in book.people %}{{ au.given }} {{ au.surname }}{% if not loop.last %}; {% endif %}{% else %}<span class="hint">none</span>{% endfor %}
+        <span class="hint">({{ 'editors' if book.book_type == 'edited_book' else 'authors' }})</span></td>
+      <td></td>
+    </tr>
+  {% for c in chapters %}
+    <tr>
+      <td><code>{{ c.doi }}</code></td>
+      <td>{{ c.title }}{% if c.subtitle %}: {{ c.subtitle }}{% endif %}<br><span class="hint">{{ c.url }}</span></td>
+      <td>{% for au in c.authors %}{{ au.given }} {{ au.surname }}{% if not loop.last %}; {% endif %}{% else %}<span class="hint">none</span>{% endfor %}</td>
+      <td>{{ c.first_page }}{% if c.last_page %}–{{ c.last_page }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% if not problems %}
+<form method="post" action="{{ url_for('book_download') }}" class="actions">
+  <input type="hidden" name="xml" value="{{ xml }}">
+  <input type="hidden" name="filename" value="{{ filename }}">
+  <button class="btn">Download {{ filename }}</button>
+</form>
+<h2>Next</h2>
+<ol>
+  <li>Upload the file in the Crossref admin system as a metadata deposit.</li>
+  <li>Wait for the confirmation email to the depositor address. Check that it reports success.</li>
+  <li>Then use <a href="{{ url_for('references') }}">step 2</a> to add references, one DOI at a time
+  (each chapter's, or the book's own).</li>
+</ol>
+{% endif %}
+
+<details><summary>View the XML</summary><pre>{{ xml }}</pre></details>
+{% endblock %}

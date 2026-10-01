@@ -3,7 +3,7 @@
 {% block title %}Step 2: add references{% endblock %}
 {% block content %}
 <h1>Step 2: add references</h1>
-<p class="lede">Do this <strong>after</strong> the article's DOI has been registered through step one and Crossref has
+<p class="lede">Do this <strong>after</strong> the DOI (an article's, a chapter's or a book's) has been registered through step one and Crossref has
 processed the upload. The tool checks with Crossref that the DOI exists before it builds anything.</p>
 
 {% include "_messages.html" %}
@@ -19,8 +19,8 @@ processed the upload. The tool checks with Crossref that the DOI exists before i
   </fieldset>
 
   <fieldset>
-    <legend>The article</legend>
-    <label class="narrow">Article DOI
+    <legend>The work</legend>
+    <label class="narrow">DOI of the article, chapter or book
       <input name="doi" value="{{ v.get('doi','') }}" placeholder="{{ prefix }}/wac-j.2026.37.1.01" required>
     </label>
     {% if show_override %}
@@ -31,7 +31,7 @@ processed the upload. The tool checks with Crossref that the DOI exists before i
 
   <fieldset>
     <legend>Works Cited or References</legend>
-    <label>Paste the list from a Word or text file. Just the list, with no article text, no PDF.
+    <label>Paste the list from a Word or text file. Just the list, with no body text, no PDF.
       <textarea name="text" rows="16" spellcheck="false">{{ text }}</textarea>
     </label>
     <p class="hint">Any style works, and you don't need to say which. A blank line between entries is the most reliable

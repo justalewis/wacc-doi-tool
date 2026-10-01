@@ -140,3 +140,44 @@ def test_crossref_titles_are_decoded():
     from crossref_api import _text
     assert _text("Editors&rsquo; Column") == "Editors\u2019 Column"
     assert _text("On <i>Writing</i> &amp; Rhetoric") == "On Writing & Rhetoric"
+
+
+# -- books -----------------------------------------------------------------
+
+def test_isbn_checksums():
+    assert xb.isbn_ok("978-3-16-148410-0")
+    assert xb.isbn_ok("0-306-40615-2")
+    assert not xb.isbn_ok("978-3-16-148410-1")
+    assert not xb.isbn_ok("12345")
+
+
+def _book(kind="edited_book", **kw):
+    base = dict(book_type=kind, title="A & B Collection", doi="10.37514/x-b.2026.1.1.0",
+                url="https://example.org/book", year="2026",
+                people=[xb.Author("Smith", "Jane", "0000-0002-1825-0097"), xb.Author("Okafor", "Chidi")])
+    base.update(kw)
+    return xb.Book(**base)
+
+
+CHAPTERS = [xb.Chapter("One", "10.37514/x-b.2026.1.1.01", "https://example.org/1",
+                       [xb.Author("Lee", "Ann")], first_page="3", last_page="20"),
+            xb.Chapter("Two", "10.37514/x-b.2026.1.1.02", "https://example.org/2")]
+
+
+@needs_xsd
+@pytest.mark.parametrize("extra", [
+    {}, {"isbn_online": "978-3-16-148410-0", "edition": "2", "place": "Fort Collins, CO"},
+    {"series": xb.Series("Perspectives on Writing", issn_online="2154-9494")}])
+def test_edited_book_validates(extra):
+    xml = xb.build_book(DEP, _book(**extra), CHAPTERS, "batch-1", "20261001120000")
+    assert xb.validate(xml, "metadata") == []
+    assert b'book_type="edited_book"' in xml and xml.count(b"<content_item") == 2
+    assert b'contributor_role="editor"' in xml and b"A &amp; B Collection" in xml
+
+
+@needs_xsd
+def test_monograph_without_chapters_validates_and_uses_author_role():
+    xml = xb.build_book(DEP, _book("monograph"), [], "batch-2", "1")
+    assert xb.validate(xml, "metadata") == []
+    assert b'book_type="monograph"' in xml and b"<content_item" not in xml
+    assert b'contributor_role="author"' in xml and b"<noisbn" in xml

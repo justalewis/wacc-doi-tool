@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% set page = 'metadata' %}
+{% block title %}Step 1: mint DOIs for {{ label|lower }}{% endblock %}
+{% block content %}
+{% set edited = v.get('type') == 'edited' %}
+<h1>Step 1: {{ label|lower }}</h1>
+<p class="lede">{% if edited %}The volume and each of its chapters get a DOI.{% else %}The book gets a DOI, and chapters can too.{% endif %}
+<a href="{{ url_for('mint') }}">Choose a different kind of work</a>. You will get a metadata deposit to upload at Crossref.</p>
+
+{% include "_messages.html" %}
+
+<form method="post" action="{{ url_for('book') }}" autocomplete="off">
+  <input type="hidden" name="type" value="{{ v.get('type','edited') }}">
+
+  <fieldset>
+    <legend>Who is depositing</legend>
+    <p class="hint">Crossref emails the success or error report to this address.</p>
+    <div class="grid3">
+      <label>Depositor name<input name="dep_name" value="{{ v.get('dep_name','') }}" data-remember="dep_name" required></label>
+      <label>Depositor email<input type="email" name="dep_email" value="{{ v.get('dep_email','') }}" data-remember="dep_email" required></label>
+      <label>Registrant (publisher)<input name="registrant" value="{{ v.get('registrant', default_registrant) }}" required></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The {{ 'collection' if edited else 'book' }}</legend>
+    <div class="grid2">
+      <label>Title<input name="b_title" value="{{ v.get('b_title','') }}" required></label>
+      <label>Subtitle (optional)<input name="b_subtitle" value="{{ v.get('b_subtitle','') }}"></label>
+    </div>
+    <label>{{ 'Editors' if edited else 'Authors' }}, one per line: <code>Surname, Given name</code> and optionally <code>| ORCID</code>
+      <textarea name="b_people" rows="3" placeholder="Okafor, Chidi | 0000-0002-1825-0097&#10;Smith, Jane">{{ v.get('b_people','') }}</textarea>
+    </label>
+    <div class="grid2">
+      <label>{{ 'Collection' if edited else 'Book' }} DOI
+        <input name="b_doi" value="{{ v.get('b_doi','') }}" placeholder="{{ prefix }}/…" required>
+        <span class="hint">Not generated: enter it as the series numbers it.</span></label>
+      <label>URL where the {{ 'collection' if edited else 'book' }} lives<input name="b_url" value="{{ v.get('b_url','') }}" placeholder="https://" required></label>
+    </div>
+    <div class="grid4">
+      <label>Year<input name="year" value="{{ v.get('year','') }}" inputmode="numeric" maxlength="4" required></label>
+      <label>Month<input name="month" value="{{ v.get('month','') }}" inputmode="numeric" maxlength="2"></label>
+      <label>Day<input name="day" value="{{ v.get('day','') }}" inputmode="numeric" maxlength="2"></label>
+      <label>Edition<input name="edition" value="{{ v.get('edition','') }}" placeholder="optional"></label>
+    </div>
+    <div class="grid2">
+      <label>Print ISBN<input name="isbn_print" value="{{ v.get('isbn_print','') }}" placeholder="978-…"></label>
+      <label>Online ISBN<input name="isbn_online" value="{{ v.get('isbn_online','') }}" placeholder="978-…"></label>
+      <label>Publisher<input name="publisher" value="{{ v.get('publisher','') }}" required></label>
+      <label>Place of publication<input name="place" value="{{ v.get('place','') }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Series</legend>
+    <details {{ 'open' if v.get('series_title') or v.get('series_issn_print') or v.get('series_issn_online') }}>
+      <summary>This book is in a series</summary>
+      <div class="grid3">
+        <label>Series title<input name="series_title" value="{{ v.get('series_title','') }}"></label>
+        <label>Series print ISSN<input name="series_issn_print" value="{{ v.get('series_issn_print','') }}" placeholder="1234-5678"></label>
+        <label>Series online ISSN<input name="series_issn_online" value="{{ v.get('series_issn_online','') }}" placeholder="1234-5678"></label>
+      </div>
+    </details>
+  </fieldset>
+
+  <fieldset>
+    <legend>{{ 'Chapters' if edited else 'Chapters (optional)' }}</legend>
+    <label class="narrow">Number of the first chapter
+      <input name="start_no" value="{{ v.get('start_no','1') }}" inputmode="numeric">
+      <span class="hint">Used only to generate DOIs you leave blank, by adding <code>.01</code>, <code>.02</code>… to the book's DOI.</span>
+    </label>
+
+    {% for r in rows %}
+    <div class="article">
+      <h3>Chapter {{ loop.index }}</h3>
+      <div class="grid2">
+        <label>Title<input name="a_title" value="{{ r.title }}"></label>
+        <label>Subtitle (optional)<input name="a_subtitle" value="{{ r.subtitle }}"></label>
+      </div>
+      <label>Authors, one per line: <code>Surname, Given name</code> and optionally <code>| ORCID</code>
+        <textarea name="a_authors" rows="3">{{ r.authors }}</textarea>
+      </label>
+      <div class="grid4">
+        <label>First page<input name="a_first" value="{{ r.first }}"></label>
+        <label>Last page<input name="a_last" value="{{ r.last }}"></label>
+        <label class="span2">DOI (blank to generate)<input name="a_doi" value="{{ r.doi }}" placeholder="{{ prefix }}/…"></label>
+      </div>
+      <label>URL where the chapter lives<input name="a_url" value="{{ r.url }}" placeholder="https://"></label>
+    </div>
+    {% endfor %}
+
+    <p><button class="btn ghost" name="action" value="add_row">Add another chapter</button></p>
+  </fieldset>
+
+  <p class="actions"><button class="btn" name="action" value="build">Check and generate the deposit file</button></p>
+</form>
+{% endblock %}

@@ -55,7 +55,7 @@ def lookup(doi: str) -> Lookup:
         return Lookup(doi, UNREACHABLE)
 
     authors = [_text(" ".join(filter(None, [a.get("given"), a.get("family") or a.get("name")])))
-               for a in msg.get("author", [])]
+               for a in (msg.get("author") or msg.get("editor") or [])]
     issued = (msg.get("issued", {}).get("date-parts") or [[None]])[0]
     return Lookup(
         doi=doi,

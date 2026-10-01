@@ -3,7 +3,9 @@
 
 Two steps, in this order, and the second refuses to run until the first has happened:
 
-  1. /metadata    form -> Crossref metadata deposit (.xml) for the Crossref admin uploader
+  1. /mint        pick journal article(s), edited collection or monograph, then
+                  /metadata or /book: form -> Crossref metadata deposit (.xml) for the
+                  Crossref admin uploader
   2. /references  paste a Works Cited -> reference deposit (.xml) bound to a DOI that
                   Crossref already knows about
 
@@ -380,6 +382,216 @@ def _download(kind: str):
 
 @app.post("/metadata/download")
 def metadata_download():
+    return _download("metadata")
+
+
+# -- step one, books -------------------------------------------------------
+
+BOOK_TYPES = {"edited": "edited_book", "monograph": "monograph"}
+BOOK_LABEL = {"edited": "Edited collection", "monograph": "Monograph"}
+BOOK_MIN_ROWS = {"edited": 6, "monograph": 0}
+PUBLISHER = os.environ.get("WACDOI_PUBLISHER", "WAC Clearinghouse")
+PUBLISHER_PLACE = os.environ.get("WACDOI_PUBLISHER_PLACE", "Fort Collins, CO")
+
+
+def _book_values(form):
+    v = {k: form.get(k, "").strip() for k in (
+        "dep_name", "dep_email", "registrant", "type", "b_title", "b_subtitle", "b_people",
+        "b_doi", "b_url", "year", "month", "day", "edition", "isbn_print", "isbn_online",
+        "publisher", "place", "series_title", "series_issn_print", "series_issn_online",
+        "start_no")}
+    if v["type"] not in BOOK_TYPES:
+        v["type"] = "edited"
+    return v
+
+
+def _check_doi(doi: str, where: str, seen: set[str], errors: list[str]):
+    if not doi.lower().startswith(PREFIX.lower() + "/"):
+        errors.append(f"{where}: DOI must start with {PREFIX}/ (this tool only mints "
+                      "under the Clearinghouse prefix).")
+    elif not xb.DOI_RE.match(doi):
+        errors.append(f"{where}: DOI “{doi}” contains characters Crossref no longer allows "
+                      "in new DOIs. Suffixes may use letters, digits and - . _ ; ( ) /")
+    if doi.lower() in seen:
+        errors.append(f"{where}: DOI {doi} appears twice in this batch.")
+    seen.add(doi.lower())
+
+
+def parse_book(form):
+    """Return (values, rows, errors, warnings, built); built is None on any error."""
+    v, rows = _book_values(form), _rows_from(form)
+    errors: list[str] = []
+    warnings: list[str] = []
+    kind = v["type"]
+    edited = kind == "edited"
+    noun = "editor" if edited else "author"
+
+    if not v["dep_name"]:
+        errors.append("Depositor name is required.")
+    if not EMAIL_RE.match(v["dep_email"]):
+        errors.append("A valid depositor email is required. Crossref sends the success "
+                      "or error report there, so it must be an inbox someone reads.")
+    if not v["registrant"]:
+        errors.append("Registrant is required.")
+    if not v["publisher"]:
+        errors.append("Publisher name is required.")
+
+    if not v["b_title"]:
+        errors.append("The book's title is required.")
+    if not URL_RE.match(v["b_url"]):
+        errors.append("The URL where the book lives is required (starting http:// or https://).")
+    book_doi = xb.normalize_doi(v["b_doi"])
+    seen: set[str] = set()
+    if not book_doi:
+        errors.append("The book's own DOI is required. It is not generated, because book DOIs "
+                      "follow the series' numbering. Enter it exactly as the series does.")
+    else:
+        v["b_doi"] = book_doi
+        _check_doi(book_doi, "Book", seen, errors)
+    people = _parse_authors(v["b_people"], errors, "Book " + noun + "s")
+    if not people:
+        warnings.append(f"No {noun}s given. Crossref strongly recommends them.")
+
+    year = v["year"]
+    if not re.fullmatch(r"\d{4}", year) or not 1900 <= int(year) <= 2100:
+        errors.append("Publication year must be four digits.")
+    if v["month"] and not (v["month"].isdigit() and 1 <= int(v["month"]) <= 12):
+        errors.append("Month must be a number from 1 to 12.")
+    if v["day"] and not (v["day"].isdigit() and 1 <= int(v["day"]) <= 31):
+        errors.append("Day must be a number from 1 to 31.")
+    if v["day"] and not v["month"]:
+        errors.append("A day needs a month.")
+    if len(v["edition"]) > 15:
+        errors.append("Edition is longer than Crossref's 15-character limit.")
+
+    for label, key in (("Print ISBN", "isbn_print"), ("Online ISBN", "isbn_online")):
+        if v[key] and not xb.isbn_ok(v[key]):
+            errors.append(f"{label} “{v[key]}” is not a valid ISBN-10 or ISBN-13 "
+                          "(check the digits and the final check digit).")
+    if not (v["isbn_print"] or v["isbn_online"]):
+        warnings.append("No ISBN. The file will say the book has none. Add one if it exists, "
+                        "because Crossref and others use it to match the book.")
+
+    series = None
+    if v["series_title"]:
+        for label, key in (("Series print ISSN", "series_issn_print"),
+                           ("Series online ISSN", "series_issn_online")):
+            if v[key] and not issn_ok(v[key]):
+                errors.append(f"{label} “{v[key]}” is not a valid ISSN (format 1234-5678, "
+                              "with a correct check digit).")
+        if not (v["series_issn_print"] or v["series_issn_online"]):
+            errors.append("A series needs at least one ISSN. Crossref will not accept series "
+                          "metadata without one; clear the series title if this book is not "
+                          "in a series.")
+        series = xb.Series(v["series_title"], v["series_issn_print"], v["series_issn_online"])
+    elif v["series_issn_print"] or v["series_issn_online"]:
+        errors.append("A series ISSN was given without a series title.")
+
+    try:
+        start = int(v["start_no"] or 1)
+    except ValueError:
+        start = 1
+        errors.append("Starting chapter number must be a whole number.")
+
+    chapters: list[xb.Chapter] = []
+    live = [r for r in rows if any(r.values())]
+    if edited and not live:
+        errors.append("An edited collection needs at least one chapter.")
+    for i, r in enumerate(live):
+        where = f"Chapter {i + 1}"
+        if not r["title"]:
+            errors.append(f"{where}: title is required.")
+        if not URL_RE.match(r["url"]):
+            errors.append(f"{where}: the URL where the chapter lives is required "
+                          "(starting http:// or https://).")
+        doi = xb.normalize_doi(r["doi"])
+        if not doi and book_doi:
+            doi = f"{book_doi}.{start + i:02d}"
+            r["doi"] = doi
+            warnings.append(f"{where}: no DOI entered, so {doi} was generated by adding a "
+                            "chapter number to the book's DOI. Confirm that matches how the "
+                            "series numbers its chapters.")
+        if doi:
+            _check_doi(doi, where, seen, errors)
+        elif not book_doi:
+            errors.append(f"{where}: enter a DOI, or give the book's DOI so one can be generated.")
+        authors = _parse_authors(r["authors"], errors, where)
+        if not authors:
+            warnings.append(f"{where}: no authors. Crossref strongly recommends them.")
+        if r["last"] and not r["first"]:
+            errors.append(f"{where}: a last page needs a first page.")
+        chapters.append(xb.Chapter(
+            title=r["title"], subtitle=r["subtitle"], doi=doi, url=r["url"], authors=authors,
+            first_page=r["first"], last_page=r["last"]))
+
+    built = None
+    if not errors:
+        book = xb.Book(BOOK_TYPES[kind], v["b_title"], book_doi, v["b_url"], year, people,
+                       subtitle=v["b_subtitle"], month=v["month"], day=v["day"],
+                       edition=v["edition"], isbn_print=v["isbn_print"],
+                       isbn_online=v["isbn_online"], publisher=v["publisher"],
+                       place=v["place"], series=series)
+        built = (xb.Depositor(v["dep_name"], v["dep_email"], v["registrant"]), book, chapters)
+    return v, rows, errors, warnings, built
+
+
+def _book_rows_for_render(rows, kind):
+    rows = list(rows)
+    while len(rows) < BOOK_MIN_ROWS[kind]:
+        rows.append(_blank_row())
+    return rows
+
+
+@app.route("/mint")
+def mint():
+    return render_template("mint.html")
+
+
+@app.route("/book", methods=["GET", "POST"])
+def book():
+    if request.method == "GET":
+        kind = request.args.get("type") if request.args.get("type") in BOOK_TYPES else "edited"
+        v = {"type": kind, "registrant": REGISTRANT, "publisher": PUBLISHER,
+             "place": PUBLISHER_PLACE, "start_no": "1"}
+        return render_template("book.html", v=v, rows=_book_rows_for_render([], kind),
+                               label=BOOK_LABEL[kind], errors=[], warnings=[])
+
+    v, rows, errors, warnings, built = parse_book(request.form)
+    kind = v["type"]
+    action = request.form.get("action", "build")
+    if action == "add_row" or errors or built is None:
+        if action == "add_row":
+            rows.append(_blank_row())
+            errors = []
+        return render_template("book.html", v=v, rows=_book_rows_for_render(rows, kind),
+                               label=BOOK_LABEL[kind], errors=errors,
+                               warnings=warnings if action != "add_row" else [])
+
+    dep, bk, chapters = built
+    dois = [bk.doi] + [c.doi for c in chapters]
+    for doi, found in zip(dois, _existing(dois)):
+        if found.status == crossref_api.FOUND:
+            warnings.append(
+                f"{doi} is ALREADY REGISTERED (“{found.title}”). Uploading this "
+                "file will overwrite that record. Continue only if that is the intent.")
+        elif found.status == crossref_api.UNREACHABLE:
+            warnings.append("Could not reach Crossref to check whether these DOIs already "
+                            "exist. Check them yourself before uploading.")
+            break
+
+    stamp = xb.now_stamp()
+    tail = slugify(bk.doi.split("/", 1)[1]) if "/" in bk.doi else "book"
+    batch_id = f"wacc-book-{tail}-{stamp}"[:100]
+    xml = xb.build_book(dep, bk, chapters, batch_id, stamp)
+    problems = xb.validate(xml, "metadata") if xb.schemas_available() else \
+        ["Schema files are missing on this server (run tools/fetch_schemas.py)."]
+    return render_template("book_result.html", v=v, book=bk, chapters=chapters, label=BOOK_LABEL[kind],
+                           warnings=warnings, problems=problems, xml=xml.decode("utf-8"),
+                           filename=f"wacc-{kind}-{tail}-{stamp}.xml", batch_id=batch_id)
+
+
+@app.post("/book/download")
+def book_download():
     return _download("metadata")
 
 

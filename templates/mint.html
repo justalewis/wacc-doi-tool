@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% set page = 'metadata' %}
+{% block title %}Step 1: what are you minting?{% endblock %}
+{% block content %}
+<h1>Step 1: mint DOIs</h1>
+<p class="lede">What kind of work is it? Each choice builds the matching Crossref deposit.</p>
+
+<div class="steps">
+  <section class="card">
+    <h2>Journal article</h2>
+    <p>One article, or a whole issue. Registers each article under the journal's record.</p>
+    <p class="actions"><a class="btn" href="{{ url_for('metadata', mode='issue') }}">Whole issue</a>
+    <a class="btn ghost" href="{{ url_for('metadata', mode='article') }}">Single article</a></p>
+  </section>
+  <section class="card">
+    <h2>Edited collection</h2>
+    <p>The volume gets a DOI, and each chapter gets its own. One file registers all of them,
+    with the editors on the volume and the authors on each chapter.</p>
+    <p class="actions"><a class="btn" href="{{ url_for('book', type='edited') }}">Edited collection</a></p>
+  </section>
+  <section class="card">
+    <h2>Monograph</h2>
+    <p>A single-author (or co-authored) book with one DOI. Chapters can be added if they
+    should have DOIs too.</p>
+    <p class="actions"><a class="btn" href="{{ url_for('book', type='monograph') }}">Monograph</a></p>
+  </section>
+</div>
+{% endblock %}

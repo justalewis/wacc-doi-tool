@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import html
+import re
 import sys
 from pathlib import Path
 
@@ -191,3 +193,69 @@ def test_lockout_after_repeated_failures(gated):
     for _ in range(appmod.LOGIN_MAX_FAILS):
         gated.post("/login", data={"code": "bad"})
     assert gated.post("/login", data={"code": "correct horse"}).status_code == 429
+
+
+# -- books -----------------------------------------------------------------
+
+def post_book(client, chapters, **over):
+    data = {"dep_name": "Jane Staff", "dep_email": "staff@example.org",
+            "registrant": "WAC Clearinghouse", "type": "edited", "b_title": "Collected Essays",
+            "b_people": "Okafor, Chidi\nSmith, Jane", "b_doi": "10.37514/per-b.2026.1234.0",
+            "b_url": "https://wacclearinghouse.org/books/1234", "year": "2026",
+            "isbn_online": "978-3-16-148410-0", "publisher": "WAC Clearinghouse",
+            "start_no": "1", "action": "build"}
+    data.update(over)
+    for key in ("title", "subtitle", "authors", "first", "last", "doi", "url"):
+        data[f"a_{key}"] = [c.get(key, "") for c in chapters]
+    return client.post("/book", data=data)
+
+
+CH = {"title": "On Writing", "authors": "Lee, Ann", "first": "1", "last": "12",
+      "url": "https://wacclearinghouse.org/books/1234/1.pdf"}
+
+
+def test_mint_chooser_and_book_pages_render(client):
+    body = client.get("/mint").get_data(as_text=True)
+    for label in ("Journal article", "Edited collection", "Monograph"):
+        assert label in body
+    assert "Chapters" in client.get("/book?type=edited").get_data(as_text=True)
+    assert "monograph" in client.get("/book?type=monograph").get_data(as_text=True)
+
+
+def test_edited_collection_builds_with_generated_chapter_dois(client):
+    r = post_book(client, [CH, dict(CH, title="Second")])
+    body = r.get_data(as_text=True)
+    assert r.status_code == 200 and "Valid." in body
+    assert "10.37514/per-b.2026.1234.0.01" in body and "10.37514/per-b.2026.1234.0.02" in body
+    assert "Download" in body
+
+
+def test_monograph_needs_no_chapters(client):
+    r = post_book(client, [], type="monograph")
+    assert "Valid." in r.get_data(as_text=True)
+
+
+def test_edited_collection_needs_a_chapter_and_a_book_doi(client):
+    body = post_book(client, [], b_doi="").get_data(as_text=True)
+    assert "needs at least one chapter" in body and "book&#39;s own DOI is required" in body
+
+
+def test_book_validation_errors(client):
+    body = post_book(client, [CH], isbn_online="978-3-16-148410-1", series_title="S",
+                     b_doi="10.9999/nope").get_data(as_text=True)
+    assert "not a valid ISBN" in body and "needs at least one ISSN" in body
+    assert "DOI must start with 10.37514/" in body
+
+
+def test_book_download_revalidates(client):
+    body = post_book(client, [CH]).get_data(as_text=True)
+    xml = html.unescape(re.search(r'name="xml" value="([^"]*)"', body).group(1))
+    assert client.post("/book/download", data={"xml": xml, "filename": "x.xml"}).status_code == 200
+    bad = client.post("/book/download", data={"xml": "<nope/>", "filename": "x.xml"})
+    assert bad.status_code == 422
+
+
+def test_book_flags_already_registered_dois(client, monkeypatch):
+    monkeypatch.setattr(crossref_api, "lookup", lambda doi: crossref_api.Lookup(
+        doi, crossref_api.FOUND, title="Existing"))
+    assert "ALREADY REGISTERED" in post_book(client, [CH]).get_data(as_text=True)

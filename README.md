@@ -38,8 +38,14 @@ python app.py                      # http://localhost:5000
 - `data/journals.json` holds titles, codes and ISSNs read from Crossref's records under the
   prefix. Crossref lists every ISSN there as electronic. **Staff should confirm print/online
   and add abbreviated titles.** Journals not in the list can be typed in on the form.
-- **Journals only.** The Clearinghouse also publishes edited collections (book chapters).
-  Those need a different deposit type, not built here.
+- **Three kinds of work.** `/mint` asks first: journal article(s) (`/metadata`), edited
+  collection or monograph (`/book`). Books use Crossref's `<book>` element in the same 5.4.0
+  schema: an edited collection gets the volume DOI plus a `content_item` per chapter, with
+  editors on the volume and authors on each chapter; a monograph has its own DOI and optional
+  chapters. Book DOIs are never generated (enter them as the series numbers them); blank
+  chapter DOIs are suggested as `<book DOI>.NN` and flagged for confirmation. Optional
+  series (needs an ISSN) and ISBNs (checksummed) are supported. Step 2 works unchanged on
+  any of these DOIs.
 - Nothing builds an absolute URL, so a reverse proxy's Host-header handling cannot affect it.
 
 ## Settings (environment variables)
@@ -81,4 +87,4 @@ right for local development. The installer always sets it.
   If added, do the test system (`test.crossref.org`) first and keep the password out of storage.
 - Several articles' references in one resources deposit. The generator already supports it
   (`build_references` takes a list of DOIs); the form takes one article at a time.
-- Book chapters and issue-level or journal-level DOIs.
+- Issue-level or journal-level DOIs, book parts/sections, and reference or other book types.

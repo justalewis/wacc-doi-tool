@@ -210,6 +210,150 @@ def build_metadata(dep: Depositor, journal: Journal, issue: Issue,
     return _serialise(root)
 
 
+# -- step one, books: monograph or edited collection ------------------------
+
+@dataclass
+class Series:
+    title: str
+    issn_print: str = ""
+    issn_online: str = ""
+
+
+@dataclass
+class Book:
+    book_type: str                 # "edited_book" or "monograph"
+    title: str
+    doi: str
+    url: str
+    year: str
+    people: list[Author] = field(default_factory=list)   # editors, or a monograph's authors
+    subtitle: str = ""
+    month: str = ""
+    day: str = ""
+    edition: str = ""
+    isbn_print: str = ""
+    isbn_online: str = ""
+    publisher: str = "WAC Clearinghouse"
+    place: str = ""
+    language: str = "en"
+    series: Series | None = None
+
+
+@dataclass
+class Chapter:
+    title: str
+    doi: str
+    url: str
+    authors: list[Author] = field(default_factory=list)
+    subtitle: str = ""
+    first_page: str = ""
+    last_page: str = ""
+
+
+def isbn_ok(raw: str) -> bool:
+    """ISBN-10 or ISBN-13 with a correct check digit; hyphens and spaces ignored."""
+    d = re.sub(r"[-\s]", "", raw or "")
+    if re.fullmatch(r"\d{13}", d):
+        total = sum(int(c) * (3 if i % 2 else 1) for i, c in enumerate(d[:12]))
+        return (10 - total % 10) % 10 == int(d[12])
+    if re.fullmatch(r"\d{9}[\dX]", d):
+        total = sum((10 - i) * (10 if c == "X" else int(c)) for i, c in enumerate(d))
+        return total % 11 == 0
+    return False
+
+
+def _contributors(parent, people: list[Author], role: str):
+    c = _sub(parent, META_NS, "contributors")
+    for i, au in enumerate(people):
+        p = _sub(c, META_NS, "person_name", contributor_role=role,
+                 sequence="first" if i == 0 else "additional")
+        if au.given:
+            _sub(p, META_NS, "given_name", au.given)
+        _sub(p, META_NS, "surname", au.surname)
+        if au.orcid:
+            _sub(p, META_NS, "ORCID", f"https://orcid.org/{au.orcid}")
+
+
+def build_book(dep: Depositor, book: Book, chapters: list[Chapter],
+               batch_id: str, stamp: str) -> bytes:
+    """A <book> deposit. An edited collection carries the volume's own DOI plus one
+    content_item per chapter; a monograph carries its own DOI and optionally chapters."""
+    N = META_NS
+    root = etree.Element(
+        f"{{{N}}}doi_batch", nsmap={None: N, "xsi": XSI}, version="5.4.0",
+        attrib={f"{{{XSI}}}schemaLocation": f"{N} {META_LOC}"})
+    head = _sub(root, N, "head")
+    _sub(head, N, "doi_batch_id", batch_id)
+    _sub(head, N, "timestamp", stamp)
+    d = _sub(head, N, "depositor")
+    _sub(d, N, "depositor_name", dep.name)
+    _sub(d, N, "email_address", dep.email)
+    _sub(head, N, "registrant", dep.registrant)
+
+    b = _sub(_sub(root, N, "body"), N, "book", book_type=book.book_type)
+    role = "editor" if book.book_type == "edited_book" else "author"
+
+    def titles(parent, title, subtitle):
+        t = _sub(parent, N, "titles")
+        _sub(t, N, "title", title)
+        if subtitle:
+            _sub(t, N, "subtitle", subtitle)
+
+    def doi_data(parent, doi, url):
+        dd = _sub(parent, N, "doi_data")
+        _sub(dd, N, "doi", doi)
+        _sub(dd, N, "resource", url)
+
+    if book.series:
+        bm = _sub(b, N, "book_series_metadata", language=book.language)
+        sm = _sub(bm, N, "series_metadata")
+        _sub(_sub(sm, N, "titles"), N, "title", book.series.title)
+        if book.series.issn_print:
+            _sub(sm, N, "issn", book.series.issn_print, media_type="print")
+        if book.series.issn_online:
+            _sub(sm, N, "issn", book.series.issn_online, media_type="electronic")
+    else:
+        bm = _sub(b, N, "book_metadata", language=book.language)
+    if book.people:
+        _contributors(bm, book.people, role)
+    titles(bm, book.title, book.subtitle)
+    if book.edition:
+        _sub(bm, N, "edition_number", book.edition)
+    pd = _sub(bm, N, "publication_date", media_type="online")
+    if book.month:
+        _sub(pd, N, "month", f"{int(book.month):02d}")
+    if book.day:
+        _sub(pd, N, "day", f"{int(book.day):02d}")
+    _sub(pd, N, "year", book.year)
+    if book.isbn_print or book.isbn_online:
+        if book.isbn_print:
+            _sub(bm, N, "isbn", book.isbn_print, media_type="print")
+        if book.isbn_online:
+            _sub(bm, N, "isbn", book.isbn_online, media_type="electronic")
+    else:
+        _sub(bm, N, "noisbn", reason="monograph")
+    pub = _sub(bm, N, "publisher")
+    _sub(pub, N, "publisher_name", book.publisher)
+    if book.place:
+        _sub(pub, N, "publisher_place", book.place)
+    doi_data(bm, book.doi, book.url)
+
+    for ch in chapters:
+        ci = _sub(b, N, "content_item", component_type="chapter", level_sequence_number="1",
+                  publication_type="full_text", language=book.language)
+        if ch.authors:
+            _contributors(ci, ch.authors, "author")
+        titles(ci, ch.title, ch.subtitle)
+        if ch.first_page:
+            pg = _sub(ci, N, "pages")
+            _sub(pg, N, "first_page", ch.first_page)
+            if ch.last_page:
+                _sub(pg, N, "last_page", ch.last_page)
+        doi_data(ci, ch.doi, ch.url)
+
+    return _serialise(root)
+
+
 # -- step two: references --------------------------------------------------
 
 @dataclass
