@@ -200,12 +200,12 @@ def test_lockout_after_repeated_failures(gated):
 def post_book(client, chapters, **over):
     data = {"dep_name": "Jane Staff", "dep_email": "staff@example.org",
             "registrant": "WAC Clearinghouse", "type": "edited", "b_title": "Collected Essays",
-            "b_people": "Okafor, Chidi\nSmith, Jane", "b_doi": "10.37514/per-b.2026.1234.0",
+            "b_people": "Okafor, Chidi\nSmith, Jane", "b_doi": "10.37514/PER-B.2026.1234",
             "b_url": "https://wacclearinghouse.org/books/1234", "year": "2026",
             "isbn_online": "978-3-16-148410-0", "publisher": "WAC Clearinghouse",
             "start_no": "1", "action": "build"}
     data.update(over)
-    for key in ("title", "subtitle", "authors", "first", "last", "doi", "url"):
+    for key in ("title", "subtitle", "authors", "first", "last", "doi", "url", "part"):
         data[f"a_{key}"] = [c.get(key, "") for c in chapters]
     return client.post("/book", data=data)
 
@@ -226,7 +226,7 @@ def test_edited_collection_builds_with_generated_chapter_dois(client):
     r = post_book(client, [CH, dict(CH, title="Second")])
     body = r.get_data(as_text=True)
     assert r.status_code == 200 and "Valid." in body
-    assert "10.37514/per-b.2026.1234.0.01" in body and "10.37514/per-b.2026.1234.0.02" in body
+    assert "10.37514/PER-B.2026.1234.2.01" in body and "10.37514/PER-B.2026.1234.2.02" in body
     assert "Download" in body
 
 
@@ -259,3 +259,23 @@ def test_book_flags_already_registered_dois(client, monkeypatch):
     monkeypatch.setattr(crossref_api, "lookup", lambda doi: crossref_api.Lookup(
         doi, crossref_api.FOUND, title="Existing"))
     assert "ALREADY REGISTERED" in post_book(client, [CH]).get_data(as_text=True)
+
+
+def test_book_doi_built_from_series_year_and_id(client):
+    body = post_book(client, [CH, dict(CH, title="Intro", part="front"), dict(CH, title="Two")],
+                     b_doi="", series_code="PER", book_id="1947", year="2023").get_data(as_text=True)
+    assert "Valid." in body
+    assert "10.37514/PER-B.2023.1947" in body
+    assert "10.37514/PER-B.2023.1947.1.1" in body          # front matter
+    assert "10.37514/PER-B.2023.1947.2.01" in body and "10.37514/PER-B.2023.1947.2.02" in body
+
+
+def test_book_id_must_be_four_digits_and_series_known(client):
+    body = post_book(client, [CH], b_doi="", series_code="PER", book_id="19").get_data(as_text=True)
+    assert "four-digit number" in body and "four-digit book ID" in body
+    assert "Unknown series code" in post_book(client, [CH], series_code="ZZZ").get_data(as_text=True)
+
+
+def test_blank_part_rows_do_not_count_as_chapters(client):
+    r = post_book(client, [dict(part="chapter")] * 3, type="edited")
+    assert "needs at least one chapter" in r.get_data(as_text=True)

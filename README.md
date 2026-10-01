@@ -42,8 +42,14 @@ python app.py                      # http://localhost:5000
   collection or monograph (`/book`). Books use Crossref's `<book>` element in the same 5.4.0
   schema: an edited collection gets the volume DOI plus a `content_item` per chapter, with
   editors on the volume and authors on each chapter; a monograph has its own DOI and optional
-  chapters. Book DOIs are never generated (enter them as the series numbers them); blank
-  chapter DOIs are suggested as `<book DOI>.NN` and flagged for confirmation. Optional
+  chapters. DOIs follow the pattern read from the Clearinghouse's published
+  books (from search results, not a full catalogue audit):
+  `10.37514/{SERIES}-B.{YEAR}.{NNNN}` for the book (series PER, PRA, INT, ATD; YEAR is the
+  publication year of that edition; NNNN is a four-digit book ID that staff supply),
+  `.1.N` for front matter such as an introduction and `.2.NN` for chapters. A blank book DOI is
+  built from series + year + ID, blank item DOIs are generated, and every generated DOI is
+  flagged for confirmation. Open questions: other series codes, what NNNN encodes, whether
+  `.1.N`/`.2.NN` hold for every book. Optional
   series (needs an ISSN) and ISBNs (checksummed) are supported. Step 2 works unchanged on
   any of these DOIs.
 - Nothing builds an absolute URL, so a reverse proxy's Host-header handling cannot affect it.

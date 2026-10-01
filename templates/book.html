@@ -31,12 +31,21 @@
     <label>{{ 'Editors' if edited else 'Authors' }}, one per line: <code>Surname, Given name</code> and optionally <code>| ORCID</code>
       <textarea name="b_people" rows="3" placeholder="Okafor, Chidi | 0000-0002-1825-0097&#10;Smith, Jane">{{ v.get('b_people','') }}</textarea>
     </label>
-    <div class="grid2">
-      <label>{{ 'Collection' if edited else 'Book' }} DOI
-        <input name="b_doi" value="{{ v.get('b_doi','') }}" placeholder="{{ prefix }}/…" required>
-        <span class="hint">Not generated: enter it as the series numbers it.</span></label>
-      <label>URL where the {{ 'collection' if edited else 'book' }} lives<input name="b_url" value="{{ v.get('b_url','') }}" placeholder="https://" required></label>
+    <p class="hint">The Clearinghouse builds book DOIs as <code>{{ prefix }}/<b>SERIES</b>-B.<b>YEAR</b>.<b>ID</b></code>,
+    for example <code>{{ prefix }}/PER-B.2023.1947</code>. Choose the series and enter the four-digit ID, or type the whole DOI below.</p>
+    <div class="grid3">
+      <label>Series code
+        <select name="series_code">
+          <option value="">Not listed: type the DOI</option>
+          {% for code, name in book_series.items() %}
+          <option value="{{ code }}" {{ 'selected' if v.get('series_code') == code }}>{{ code }}: {{ name }}</option>
+          {% endfor %}
+        </select></label>
+      <label>Book ID (four digits)<input name="book_id" value="{{ v.get('book_id','') }}" inputmode="numeric" maxlength="4" placeholder="1947"></label>
+      <label>{{ 'Collection' if edited else 'Book' }} DOI (blank to build)
+        <input name="b_doi" value="{{ v.get('b_doi','') }}" placeholder="{{ prefix }}/…"></label>
     </div>
+    <label>URL where the {{ 'collection' if edited else 'book' }} lives<input name="b_url" value="{{ v.get('b_url','') }}" placeholder="https://" required></label>
     <div class="grid4">
       <label>Year<input name="year" value="{{ v.get('year','') }}" inputmode="numeric" maxlength="4" required></label>
       <label>Month<input name="month" value="{{ v.get('month','') }}" inputmode="numeric" maxlength="2"></label>
@@ -67,12 +76,17 @@
     <legend>{{ 'Chapters' if edited else 'Chapters (optional)' }}</legend>
     <label class="narrow">Number of the first chapter
       <input name="start_no" value="{{ v.get('start_no','1') }}" inputmode="numeric">
-      <span class="hint">Used only to generate DOIs you leave blank, by adding <code>.01</code>, <code>.02</code>… to the book's DOI.</span>
+      <span class="hint">Used only to generate DOIs you leave blank: chapters become <code>…<b>.2.01</b></code>, <code>.2.02</code>… and front matter <code>…<b>.1.1</b></code>, <code>.1.2</code>…</span>
     </label>
 
     {% for r in rows %}
     <div class="article">
-      <h3>Chapter {{ loop.index }}</h3>
+      <h3>Item {{ loop.index }}</h3>
+      <label class="narrow">What is it
+        <select name="a_part">
+          <option value="chapter" {{ 'selected' if r.part != 'front' }}>Chapter (DOI ends .2.NN)</option>
+          <option value="front" {{ 'selected' if r.part == 'front' }}>Front matter, e.g. introduction (DOI ends .1.N)</option>
+        </select></label>
       <div class="grid2">
         <label>Title<input name="a_title" value="{{ r.title }}"></label>
         <label>Subtitle (optional)<input name="a_subtitle" value="{{ r.subtitle }}"></label>
